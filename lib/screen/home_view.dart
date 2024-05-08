@@ -1,26 +1,44 @@
-// ignore_for_file: prefer_interpolation_to_compose_strings
-
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key});
+  final Tab? tubo;
+
+  const MyHomePage({Key? key, this.tubo}) : super(key: key);
 
   @override
   State<MyHomePage> createState() => _MyHomePageState();
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  Future<List<dynamic>> getUser() async {
-    var url = Uri.parse('https://jsonplaceholder.typicode.com/Users');
+  late List<dynamic> _userData;
+
+  @override
+  void initState() {
+    super.initState();
+    _getUser();
+  }
+
+  Future<void> _getUser() async {
+    var url = Uri.parse('https://jsonplaceholder.typicode.com/users');
     var response = await http.get(url);
     if (response.statusCode == 200) {
-      var responseBody = jsonDecode(response.body);
-      return responseBody;
+      setState(() {
+        _userData = jsonDecode(response.body);
+      });
     } else {
       throw Exception('Failed to load data');
+    }
+  }
+
+  Future<void> _deleteTubo(int id) async {
+    final response = await http.delete(
+      Uri.parse('https://jsonplaceholder.typicode.com/users/$id'),
+    );
+    if (response.statusCode != 200) {
+      throw Exception('Failed to delete tubo');
     }
   }
 
@@ -32,7 +50,10 @@ class _MyHomePageState extends State<MyHomePage> {
         title: const Text(
           "Tubo Application",
           style: TextStyle(
-              fontSize: 20, fontWeight: FontWeight.bold, color: Colors.purple),
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: Colors.purple,
+          ),
         ),
         leading: GestureDetector(
           onTap: () {},
@@ -41,65 +62,52 @@ class _MyHomePageState extends State<MyHomePage> {
       ),
       body: SafeArea(
         minimum: const EdgeInsets.all(10),
-        child: FutureBuilder(
-          future: getUser(),
-          builder: (context, AsyncSnapshot<List<dynamic>> snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            } else if (snapshot.hasError) {
-              return Center(child: Text('Error: ${snapshot.error}'));
-            } else {
-              return Column(
-                children: [
-                  Expanded(
-                    child: ListView.builder(
-                      itemCount: snapshot.data!.length,
-                      itemBuilder: (BuildContext context, int index) {
-                        return Padding(
-                          padding: const EdgeInsets.all(10.0),
-                          child: Container(
-                            margin: const EdgeInsets.all(10.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                ListTile(
-                                  tileColor: Colors.amberAccent,
-                                  title: Text(
-                                    ("Name:  " +
-                                        snapshot.data![index]['name']
-                                            .toString()),
-                                    style: const TextStyle(
-                                      color: Colors.black,
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  subtitle: Text(
-                                    ("email:  " +
-                                        snapshot.data![index]['email']
-                                            .toString()),
-                                    style: const TextStyle(
-                                      color: Colors.black,
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  trailing: IconButton(
-                                      onPressed: () {},
-                                      icon: const Icon(Icons.cancel)),
-                                )
-                              ],
+        child: _userData.isEmpty
+            ? const Center(child: CircularProgressIndicator())
+            : ListView.builder(
+                itemCount: _userData.length,
+                itemBuilder: (BuildContext context, int index) {
+                  return Padding(
+                    padding: const EdgeInsets.all(10.0),
+                    child: Container(
+                      margin: const EdgeInsets.all(10.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          ListTile(
+                            tileColor: Colors.amberAccent,
+                            title: Text(
+                              "Name:  ${_userData[index]['name']}",
+                              style: const TextStyle(
+                                color: Colors.black,
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
-                          ),
-                        );
-                      },
+                            subtitle: Text(
+                              "Email:  ${_userData[index]['email']}",
+                              style: const TextStyle(
+                                color: Colors.black,
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            trailing: IconButton(
+                              onPressed: () {
+                                _deleteTubo(_userData[index]['id']);
+                                setState(() {
+                                  _userData.removeAt(index);
+                                });
+                              },
+                              icon: const Icon(Icons.delete_outline_rounded),
+                            ),
+                          )
+                        ],
+                      ),
                     ),
-                  ),
-                ],
-              );
-            }
-          },
-        ),
+                  );
+                },
+              ),
       ),
     );
   }
